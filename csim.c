@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <string.h>
 
 #define MAX_COUNTER_VAL 10000
 
@@ -48,11 +49,11 @@ int updateCache(Cache* cache, int setBits, int tagBits);
 void updateLRUCounter(Cache *cache, int setBits, int hitNum);
 int isMiss(Cache *cache, int setBits, int tagBits);
 void modifyData(Cache *cache, int addr, int size, int setBits, int tagBits,
-		int isVerbose, cache_params_t * params);
+		int isVerbose, cache_params_t *params);
 void storeData(Cache *cache, int addr, int size, int setBits, int tagBits,
-		int isVerbose, cache_params_t * params);
+		int isVerbose, cache_params_t *params);
 void loadData(Cache *cache, int addr, int size, int setBits, int tagBits,
-		int isVerbose, cache_params_t * params);
+		int isVerbose, cache_params_t *params);
 int getTag(int addr, int s, int b);
 int getSet(int addr, int s, int b);
 void validateArgument(char *curOptarg, char ** argv);
@@ -105,12 +106,12 @@ void loadData(Cache *cache, int addr, int size, int setBits, int tagBits,
 }
 
 void storeData(Cache *cache, int addr, int size, int setBits, int tagBits,
-		int isVerbose, cache_params_t * params) {
+		int isVerbose, cache_params_t *params) {
 	loadData(cache, addr, size, setBits, tagBits, isVerbose, params);
 }
 
 void modifyData(Cache *cache, int addr, int size, int setBits, int tagBits,
-		int isVerbose, cache_params_t * params) {
+		int isVerbose, cache_params_t *params) {
 	loadData(cache, addr, size, setBits, tagBits, isVerbose, params);
 	storeData(cache, addr, size, setBits, tagBits, isVerbose, params);
 }
@@ -206,8 +207,8 @@ void initParams(cache_params_t * cache_params, int s, int b, int E) {
 	cache_params->s = s; /* 2**s cache sets */
 	cache_params->b = b; /* cacheline block size 2**b bytes */
 	cache_params->E = E; /* number of cachelines per set */
-	cache_params->S = 2 ^ cache_params->s; /* number of sets, derived from S = 2**s */
-	cache_params->B = 2 ^ cache_params->b; /* cacheline block size (bytes), derived from B = 2**b */
+	cache_params->S = 2 << (cache_params->s - 1); /* number of sets, derived from S = 2**s */
+	cache_params->B = 2 << (cache_params->b - 1); /* cacheline block size (bytes), derived from B = 2**b */
 	cache_params->hits = 0;
 	cache_params->misses = 0;
 	cache_params->evictions = 0;
@@ -215,7 +216,7 @@ void initParams(cache_params_t * cache_params, int s, int b, int E) {
 
 void initCache(cache_params_t cache_params, Cache* cache) {
 
-	cache->size_set = 2 << cache_params.s;
+	cache->size_set = 2 << (cache_params.s - 1);
 	cache->size_line = cache_params.E;
 	cache->sets = (Set *) malloc(cache->size_set * sizeof(Set));
 	if (!cache->sets) {
@@ -256,7 +257,7 @@ int main(int argc, char **argv) {
 	// Read in the data
 	FILE *file = fopen(tracefilename, "r");
 
-	while (fscanf(file, "%s, %x, %d", opt, &addr, &size) != EOF) {
+	while (fscanf(file, "%s %x, %d", opt, &addr, &size) != EOF) {
 		if (strcmp(opt, "I") == 0)
 			continue;
 		int setBits = getSet(addr, s, b);
